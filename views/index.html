@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; float:left; width: 75%;}
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+      #users {list-style-type: none; float: right; width: 15%; border: 2px solid black;}
+      #users li { padding: 5px 10px; }
+
+      #users header {padding: 5px 10px; background: #abc; }
+      .user:hover {cursor:pointer; background: #eee;}
+    </style>
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <ul id="users"></ul>
+    <form action="">
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+  <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+    var username = null;
+    var myId = null;
+    var socket = io();
+    $.get('/user', function(user) {
+      if(user == 'error')
+        document.location.href = '/login';
+      else {
+        username = user;
+        socket.emit('connectToServer', user);
+      }
+    });
+    $('form').submit(function(){
+      socket.emit('chat message', $('#m').val(), username);
+      $('#m').val('');
+      return false;
+    });
+    socket.on('chat message', function(msg, user){
+      if(user == username) 
+        $('#messages').append($('<li>').html('<b style="color: blue;">'+user+': </b>'+msg));
+      else
+        $('#messages').append($('<li>').html('<b>'+user+': </b>'+msg));
+    });
+    socket.on('broadcast', function(msg) {
+      $('#messages').append($('<li>').html('<b>'+msg+'</b>'));
+    });
+    socket.on('myId', function(id){
+      myId = id;
+    });
+    socket.on('users', function(users){
+      $('#users').empty();
+      $('#users').append($('<header>').text(users.length+' user(s) online.'));
+      for(var i = 0; i < users.length; i++) {
+        if(username == users[i])
+          $('#users').append($('<li>').text('***'+users[i]));
+        else
+          $('#users').append($('<li class="user">').text(users[i]));
+      }
+    });
+    $(document).on('click', '.user', function () {
+      socket.emit('challenge', $(this).text());
+    });
+    socket.on('challenge', function(from){
+      alert("Challenged by: "+from);
+    });
+  </script>
+  </body>
+
+</html>
